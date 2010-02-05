@@ -45,9 +45,6 @@ DOCTYPE = [ """<?xml version="1.0" encoding="UTF-8"?>
 
 AUTHOR_ITEMS = ['organization', 'contact']
 
-def absorb(node):
-  return
-
 class RFCTranslator(nodes.NodeVisitor):
   """
   Translates ReST into the XML consumed by xml2rfc.
@@ -81,15 +78,6 @@ class RFCTranslator(nodes.NodeVisitor):
     # element around a paragraph
     self.paragraph = []
 
-
-  def absorball(self, node):
-    """
-    Continually absorb incoming text nodes.
-    Note that some other action will have to manually
-    remove absorball from the text stack.
-    """
-    self.textcl.append(self.absorball)
-    return
 
   def starttag(self, node, tagname, suffix='\n', empty=0, **attributes):
     """
@@ -245,7 +233,7 @@ class RFCTranslator(nodes.NodeVisitor):
 
   def visit_citation_reference(self, node):
     self.begintag(node, 'xref', '\n', False, target=node['refid'].upper())
-    self.textcl.append(absorb)
+    raise nodes.SkipChildren
 
   def depart_citation_reference(self, node):
     self.endtag()
@@ -373,10 +361,10 @@ class RFCTranslator(nodes.NodeVisitor):
     assert not self.context, 'len(context) = %s' % len(self.context)
 
   def visit_emphasis(self, node):
-    pass
+    self.begintag(node, 'spanx', '', style='emph')
 
   def depart_emphasis(self, node):
-    pass
+    self.endtag()
 
   def visit_entry(self, node):
     pass
@@ -402,10 +390,7 @@ class RFCTranslator(nodes.NodeVisitor):
   def visit_field_body(self, node):
     if self.in_pre_document:
       self.body_pre_docinfo.append('="%s"?>\n' % node.astext())
-      self.textcl.append(absorb)
-
-  def depart_field_body(self, node):
-    pass
+      raise nodes.SkipNode
 
   def visit_field_list(self, node):
     pass
@@ -503,9 +488,11 @@ class RFCTranslator(nodes.NodeVisitor):
   def visit_literal(self, node):
     """Process text to prevent tokens from wrapping."""
 
+    self.begintag(node, 'spanx', '', style='verb')
     text = node.astext()
     text = escape(text)
     self.body.append(text)
+    self.endtag()
 
     raise nodes.SkipNode
 
@@ -650,10 +637,10 @@ class RFCTranslator(nodes.NodeVisitor):
     self.depart_docinfo_item()
 
   def visit_strong(self, node):
-    self.body.append(self.starttag(node, 'strong', ''))
+    self.begintag(node, 'spanx', '', style='strong')
 
   def depart_strong(self, node):
-    self.body.append('</strong>')
+    self.endtag()
 
   def visit_subscript(self, node):
     self.body.append(self.starttag(node, 'sub', ''))
@@ -765,30 +752,27 @@ class RFCTranslator(nodes.NodeVisitor):
     self.body.append('</thead>\n')
 
   def visit_title(self, node):
-    if (isinstance(node.parent, nodes.topic) or
-            isinstance(node.parent, nodes.section)):
-      return
+    if isinstance(node.parent, nodes.topic):
+        raise nodes.SkipNode
+    if isinstance(node.parent, nodes.section):
+      raise nodes.SkipDeparture
     self.begintag(node, 'title')
 
   def depart_title(self, node):
-    if (isinstance(node.parent, nodes.topic) or
-            isinstance(node.parent, nodes.section)):
-      return
     if isinstance(node.parent, nodes.document):
       self.in_pre_document = True
       self.in_document_front = len(self.body)
     self.endtag()
 
   def visit_title_reference(self, node):
-    self.body.append(self.starttag(node, 'cite', ''))
+    pass
 
   def depart_title_reference(self, node):
-    self.body.append('</cite>')
+    pass
 
   def visit_topic(self, node):
     if 'abstract' in node['classes']:
       self.begintag(node, 'abstract')
-      self.textcl.append(absorb)
 
   def depart_topic(self, node):
     self.endtag()

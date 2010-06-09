@@ -6,6 +6,7 @@ default: convspec.html
 .PHONY: clean
 clean:
 	-rm convspec.html
+	-rm convspec.xml
 
 convspec.html: convspec.xml 
 # If there's a syntax error, xml2rfc will, by default, bring up a

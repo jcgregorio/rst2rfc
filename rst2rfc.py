@@ -80,6 +80,7 @@ class RFCTranslator(nodes.NodeVisitor):
     # A stack of booleans, determine whether to push a '<t>'
     # element around a paragraph
     self.paragraph = []
+    self._empty_rfc_value = False 
 
 
   def absorball(self, node):
@@ -391,7 +392,10 @@ class RFCTranslator(nodes.NodeVisitor):
     pass
 
   def visit_field(self, node):
+
     if self.in_pre_document:
+      if node.children[0].astext() == 'private':
+        self._empty_rfc_value = True
       self.body_pre_docinfo.append('<?rfc ')
     else:
       self.body.append('<rfc ')
@@ -401,7 +405,12 @@ class RFCTranslator(nodes.NodeVisitor):
 
   def visit_field_body(self, node):
     if self.in_pre_document:
-      self.body_pre_docinfo.append('="%s"?>\n' % node.astext())
+      if self._empty_rfc_value:
+        val = " "
+        self._empty_rfc_value = False 
+      else:
+        val = node.astext()
+      self.body_pre_docinfo.append('="%s"?>\n' % val)
       self.textcl.append(absorb)
 
   def depart_field_body(self, node):
